@@ -2,16 +2,21 @@
 #include <stdlib.h>
 #include <time.h>
 
+// Defining constants
 #define NUM_OF_DICE 5
 #define NUM_OF_SCORING_CATAGORIES 13
+#define BONUS_POINTS_THRESHOLD 63
+#define BONUS 35
 
 /* Function declarations */
 void roll_dice(int dice[]);
 void keep_dice(int dice[], int rolls_left);
 void display_dice(int dice[]);
 void choose_scoring_category(int dice[], int used_categories[], int player_scores[]);
-void display_total_score(int player_scores[]);
 void display_score_table(int player_scores[], int computer_scores[]);
+int calc_score_of_singles(int player_scores[]);
+int check_bonus(int player_scores[]);
+int calc_total_score(int player_scores[]);
 // Scoring functions
 int score_single_numbers (int dice[], int number);
 int score_three_of_a_kind(int dice[]);
@@ -53,6 +58,7 @@ int main(void) {
                 printf("\n");
                 printf("Enter your choice (1 or 2): ");
                 scanf("%d", &choice);
+                printf("\n");
 
                 if (choice == 1) {
                     if (roll_count < roll_limit) { // Check if re-rolls are still allowed
@@ -72,12 +78,11 @@ int main(void) {
             }
             else {
                 // Only allow scoring category selection if maximum rolls are exceeded
-                printf("You have reached the maximum number of rolls for this turn.\n");
+                printf("You have reached the maximum number of rolls for this turn.\n\n");
                 choose_scoring_category(dice, used_categories, player_scores);
                 break; // Exit the loop after scoring
             }
         }
-        display_total_score(player_scores);
     }
     return 0;
 }
@@ -111,6 +116,8 @@ void keep_dice(int dice[], int rolls_left) {
             }
         }
     }
+    printf("\n");
+    
     // Re- rolling the unkept dice
     for (int i = 0; i < NUM_OF_DICE; i++) {
         if (keep[i] == 0) { // Check if the die is marked for re-roll
@@ -119,7 +126,6 @@ void keep_dice(int dice[], int rolls_left) {
     }
 
     display_dice(dice); // Print the new values of the dice after re-rolling
-
 }
 
 /* Printing dice values */
@@ -164,7 +170,7 @@ void choose_scoring_category(int dice[], int used_categories[], int player_score
                 valid_choice = 1; // Input is valid
             }
             else {
-                printf("You have already scored in this category! Choose another category.\n");
+                printf("You have already scored in this category! Choose another category.\n\n");
             }
         }
         else {
@@ -358,18 +364,15 @@ int score_yahtzee(int dice[]) {
     return 0; // Returning 0 if no Yahtzee found.
 }
 
-void display_total_score(int player_scores[]) {
-    int total_score = 0;
-    for (int i = 0; i < NUM_OF_SCORING_CATAGORIES; i++) {
-        total_score += player_scores[i];
-    }
-    printf("Total Score: %d\n", total_score);
-}
-
 /* Display the score table */
 void display_score_table(int player_scores[], int computer_scores[]) {
 
-    printf("***************** YAHTZEE SCORE TABLE *****************\n");
+    int singles_sum = calc_score_of_singles(player_scores);
+    int bonus = check_bonus(player_scores);
+    int total_score = calc_total_score(player_scores);
+
+    // Printing the score table
+    printf("\n***************** YAHTZEE SCORE TABLE *****************\n");
     printf("-------------------------------------------------------\n");
     printf("| Category         |  Player Score  |  Computer Score |\n");
     printf("-------------------------------------------------------\n");
@@ -380,10 +383,8 @@ void display_score_table(int player_scores[], int computer_scores[]) {
     printf("| Fives (5s)       | %-14d | %-15s |\n", player_scores[4], " ");
     printf("| Sixes (6s)       | %-14d | %-15s |\n", player_scores[5], " ");
     printf("-------------------------------------------------------\n");
-    printf("| Sum              | %-14d | %-15s |\n", 
-           player_scores[0] + player_scores[1] + player_scores[2] + 
-           player_scores[3] + player_scores[4] + player_scores[5], " ");
-    printf("| Bonus            | %-14d | %-15s |\n", 0, " ");
+    printf("| Sum              | %-14d | %-15s |\n", singles_sum, " ");
+    printf("| Bonus            | %-14d | %-15s |\n", bonus, " ");
     printf("-------------------------------------------------------\n");
     printf("| Three of a Kind  | %-14d | %-15s |\n", player_scores[6], " ");
     printf("| Four of a Kind   | %-14d | %-15s |\n", player_scores[7], " ");
@@ -393,12 +394,47 @@ void display_score_table(int player_scores[], int computer_scores[]) {
     printf("| Chance           | %-14d | %-15s |\n", player_scores[11], " ");
     printf("| Yahtzee          | %-14d | %-15s |\n", player_scores[12], " ");
     printf("-------------------------------------------------------\n");
-    printf("| Total Score      | %-14d | %-15s |\n", 
-           player_scores[0] + player_scores[1] + player_scores[2] + 
-           player_scores[3] + player_scores[4] + player_scores[5] +
-           player_scores[6] + player_scores[7] + player_scores[8] +
-           player_scores[9] + player_scores[10] + player_scores[11] +
-           player_scores[12], " ");
+    printf("| Total Score      | %-14d | %-15s |\n", total_score, " ");
     printf("-------------------------------------------------------\n");
     printf("\n");
 }
+
+/* Calculate the sum of scores of singles (1 to 6) */
+int calc_score_of_singles(int player_scores[]) {
+    int singles_sum = 0;
+    for (int i = 0; i < 6; i++) {
+        singles_sum += player_scores[i];
+    }
+    return singles_sum; // Returning the sum of the scores of singles
+}
+
+/* Calculate the total score including the bonus for singles */
+int calc_total_score(int player_scores[]) {
+    int total_score = 0;
+
+    // Sum scores for all categories
+    for (int i = 0; i < NUM_OF_SCORING_CATAGORIES; i++) {
+        total_score += player_scores[i];
+    }
+
+    int bonus = check_bonus(player_scores); // Checking for a bonus
+    if (bonus) {
+        total_score += bonus;
+    }
+
+    return total_score; // Returning the total score
+}
+
+/* Check if the player has won bonus points */
+int check_bonus(int player_scores[]) {
+    int bonus;
+    int singles_sum = calc_score_of_singles(player_scores); // Get the sum of the scores of singles (1 to 6)
+    if (singles_sum >= BONUS_POINTS_THRESHOLD) {  // Checking if the player is eligible for a bonus
+            bonus = BONUS;
+    }
+    else {
+        bonus = 0; // If not eligible for a bonus initailizing bonus to 0
+    }
+    return bonus; // Returning bonus
+}
+
