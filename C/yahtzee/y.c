@@ -15,9 +15,11 @@ void display_dice(int dice[]);
 void player_choose_scoring_category(int dice[], int player_used_categories[], int player_scores[]);
 void display_score_table(int player_scores[], int computer_scores[]);
 int calc_score_of_singles(int player_scores[]);
+int check_bonus(int player_scores[]);
 int calc_total_score(int player_scores[]);
 void player_turn(int dice[], int roll_limit, int player_used_categories[], int player_scores[]);
 void computer_turn(int dice[], int roll_limit, int computer_used_categories[], int computer_scores[]);
+char* print_score_in_table(int score, char *score_str);
 // Scoring functions
 int score_single_numbers (int dice[], int number);
 int score_three_of_a_kind(int dice[]);
@@ -27,9 +29,11 @@ int score_small_straight(int dice[]);
 int score_large_straight(int dice[]);
 int score_chance(int dice[]);
 int score_yahtzee(int dice[]);
+void player_choose_lower_category(int dice[], int used_categories[], int scores[]);
 // Additional score functions
 int check_bonus(int player_scores[]);
-
+void player_handle_multiple_yahtzees(int dice[], int player_used_categories[], int player_scores[]);
+void joker(int dice[], int used_categories[], int scores[], int yahtzee_value);
 
 int main(void) {
     int dice[NUM_OF_DICE];
@@ -51,6 +55,83 @@ int main(void) {
         computer_turn(dice, roll_limit, computer_used_categories, computer_scores);
     }
     return 0;
+}
+
+/* Human player's turn */
+void player_turn(int dice[], int roll_limit, int player_used_categories[], int player_scores[]) {
+    printf("*** Player's turn ***\n");
+
+        int roll_count = 0; // Resetting the number of rolls for each round 
+
+        // Initial dice roll
+        roll_dice(dice); // Roll all dice
+        display_dice(dice); // Show the initial roll
+
+        // Loop until the player reaches the maximum rolls allowed
+        while (1) {
+            if (roll_count < roll_limit - 1) {
+                // Prompt the user to choose to re-roll or choose a scoring category
+                int choice;
+                printf("Choose an option >>> \n");
+                printf("1. Re-roll\n");
+                printf("2. Choose scoring category\n");
+                printf("\n");
+                printf("Enter your choice (1 or 2): ");
+                scanf("%d", &choice);
+                printf("\n");
+
+                if (choice == 1) {
+                    if (roll_count < roll_limit - 1) { // Check if re-rolls are still allowed
+                        int rolls_left = roll_limit - roll_count; // Calculate remaining rolls
+                        keep_dice(dice, rolls_left); // Ask the player which dice to keep or re-roll
+                        roll_count++; // Increment roll count after each roll
+                    }
+                }
+                else if (choice == 2) {
+                    player_handle_multiple_yahtzees(dice, player_used_categories, player_scores); // Check for multiple Yahtzees before scoring
+                    player_choose_scoring_category(dice, player_used_categories, player_scores);
+                    break; // Exit the loop after scoring
+                }
+                else {
+                    printf("Invalid choice! Please enter 1 or 2.\n");
+                    continue; // Continue loop until a valid input has entered
+                }
+            }
+            else {
+                // Only allow scoring category selection if maximum rolls are exceeded
+                printf("You have reached the maximum number of rolls for this turn.\n\n");
+                player_choose_scoring_category(dice, player_used_categories, player_scores);
+                break; // Exit the loop after scoring
+            }
+        }
+}
+
+/* Computer AI's turn */
+void computer_turn(int dice[], int roll_limit, int computer_used_categories[], int computer_scores[]) {
+    printf("*** Computer's turn ***\n");
+
+    int roll_count = 0; // Reset the roll count for the computer's turn
+
+    roll_dice(dice); // Initial roll
+    display_dice(dice);
+    
+    while (roll_count < roll_limit - 1) {
+        roll_count++;
+        roll_dice(dice); // Re-roll all dice
+        display_dice(dice);
+    }
+
+    int choice;
+    int score = 0;
+
+    do {
+        choice = rand() % NUM_OF_SCORING_CATAGORIES + 1; // Random number between 1 and 13
+    } while (computer_used_categories[choice - 1] == 1);
+
+    computer_scores[choice - 1] = score;
+    computer_used_categories[choice - 1] = 1;
+
+    printf("Computer chose category %d and scored %d points.\n", choice, score);
 }
 
 /* Rolling 5 dice*/
@@ -104,24 +185,46 @@ void display_dice(int dice[]) {
 }
 
 /* Allow Player to choose a scoring catagory */
-void choose_scoring_category(int dice[], int player_used_categories[], int player_scores[]) {
+void player_choose_scoring_category(int dice[], int player_used_categories[], int player_scores[]) {
     int choice;
     
-    printf("Choose a scoring catagory:\n");
+    printf("Choose a scoring category:\n");
     printf("--------------------------\n");
-    printf("1.  Ones\n");
-    printf("2.  Twos\n");
-    printf("3.  Threes\n");
-    printf("4.  Fours\n");
-    printf("5.  Fives\n");
-    printf("6.  Sixes\n");
-    printf("7.  Three of a kind\n");
-    printf("8.  Four of a kind\n");
-    printf("9.  Full House\n");
-    printf("10. Small Straight\n");
-    printf("11. Large Straight\n");
-    printf("12. Chance\n");
-    printf("13. YAHTZEE\n");
+
+    for (int i = 0; i < NUM_OF_SCORING_CATAGORIES; i++) {
+        if (player_used_categories[i] == 0) {
+            switch (i + 1) {
+            case 1: printf("1.  Ones\n"); 
+                break;
+            case 2: printf("2.  Twos\n"); 
+                break;
+            case 3: printf("3.  Threes\n"); 
+                break;
+            case 4: printf("4.  Fours\n"); 
+                break;
+            case 5: printf("5.  Fives\n"); 
+                break;
+            case 6: printf("6.  Sixes\n"); 
+                break;
+            case 7: printf("7.  Three of a Kind\n"); 
+                break;
+            case 8: printf("8.  Four of a Kind\n"); 
+                break;
+            case 9: printf("9.  Full House\n"); 
+                break;
+            case 10: printf("10. Small Straight\n"); 
+                break;
+            case 11: printf("11. Large Straight\n"); 
+                break;
+            case 12: printf("12. Chance\n"); 
+                break;
+            case 13: printf("13. YAHTZEE\n"); 
+                break;
+            default: 
+                break;
+            }
+        }
+    }
     printf("--------------------------\n");
 
     int valid_choice = 0; // Flag to check if choice is valid
@@ -140,7 +243,7 @@ void choose_scoring_category(int dice[], int player_used_categories[], int playe
             }
         }
         else {
-            printf("Invalid choice! Please choose a catagory between 1 and 13.\n");
+            printf("Invalid choice! Please choose a category between 1 and 13.\n");
         }
     }
 
@@ -330,6 +433,113 @@ int score_yahtzee(int dice[]) {
     return 0; // Returning 0 if no Yahtzee found.
 }
 
+/* Handling multiple yahtzees */
+void player_handle_multiple_yahtzees(int dice[], int player_used_categories[], int player_scores[]) {
+    int yahtzee_value = dice[0]; // When it's a Yahtzee, assuming that dice[0] is the value of the Yahtzee
+    const int YAHTZEE_INDEX = 12;
+    int yahtzee_score = score_yahtzee(dice);
+
+    // Check if the Yahtzee has already been scored
+    if (player_used_categories[YAHTZEE_INDEX] == 1) {  // Yahtzee category is already filled
+        if (player_scores[YAHTZEE_INDEX] > 0) {  // Has already scored a Yahtzee before
+            printf("Congratulations! You rolled another Yahtzee and earned a joker!\n");
+
+            // Add 100 bonus points to the Yahtzee category
+            player_scores[YAHTZEE_INDEX] += 100;
+            printf("100 bonus points awarded.\n");
+
+            // Allow scoring with joker
+            joker(dice, player_used_categories, player_scores, yahtzee_value);
+        }
+        else {
+            printf("You have already put 0 in the Yahtzee box.\n");
+            printf("You received a joker!\n");
+            joker(dice, player_used_categories, player_scores, yahtzee_value);
+        }   
+    }
+    else {
+        // If a Yahtzee is detected and the category hasn't been scored
+        if (yahtzee_score == 50) { // A Yahtzee was rolled
+            printf("You scored a Yahtzee!\n");
+            player_scores[YAHTZEE_INDEX] = yahtzee_score; // Set the score for the Yahtzee category
+            player_used_categories[YAHTZEE_INDEX] = 1; // Mark the category as used
+            printf("Scored %d points in the Yahtzee category.\n", yahtzee_score);
+        }
+    }
+}
+
+void joker(int dice[], int used_categories[], int scores[], int yahtzee_value) {
+    // Check if the corresponding upper section category is unscored
+    if (used_categories[yahtzee_value - 1] == 0) {
+    // If the upper section(1 to 6) for the Yahtzee value is unscored, score it
+    int score = score_single_numbers(dice, yahtzee_value);
+    scores[yahtzee_value - 1] = score;
+    used_categories[yahtzee_value - 1] = 1;
+    printf("Scored %d points in the %d's category.\n", score, yahtzee_value);
+    }
+
+    else {
+        // Otherwise, player can score in any lower section (joker rule)
+        printf("You may now score in any other lower section category.\n");
+        // Prompt player to choose a lower section category
+        player_choose_lower_category(dice, used_categories, scores);
+    }
+}
+
+void player_choose_lower_category(int dice[], int used_categories[], int scores[]) {
+    int choice;
+    const int NUM_OF_LOWER_SCORING_CATAGORIES = 6;
+
+    for (int i = 0; i < NUM_OF_LOWER_SCORING_CATAGORIES; i++) {
+        if (used_categories[i + 6] == 0) {
+            switch (i + 7) {
+                case 7: printf("7.  Three of a Kind\n"); 
+                    break;
+                case 8: printf("8.  Four of a Kind\n"); 
+                    break;
+                case 9: printf("9.  Full House\n"); 
+                    break;
+                case 10: printf("10. Small Straight\n"); 
+                    break;
+                case 11: printf("11. Large Straight\n"); 
+                    break;
+                case 12: printf("12. Chance\n"); 
+                    break;
+                case 13: printf("13. YAHTZEE\n"); 
+                    break;
+                default: 
+                    break;
+            }
+        }
+    }
+
+    int valid_choice = 0;
+    while (!valid_choice) {
+        printf("Choice: ");
+        scanf("%d", &choice);
+
+        // Ensure the choice is in the lower section and hasn't been scored yet
+        if (choice >= 7 && choice <= 12 && used_categories[choice - 1] == 0) {
+            valid_choice = 1;
+        } else {
+            printf("Invalid choice or category already scored. Please try again.\n");
+        }
+    }
+
+    // Score the chosen lower section
+    int score = 0;
+    switch (choice) {
+        case 7: score = score_three_of_a_kind(dice); break;
+        case 8: score = score_four_of_a_kind(dice); break;
+        case 9: score = score_full_house(dice); break;
+        case 10: score = score_small_straight(dice); break;
+        case 11: score = score_large_straight(dice); break;
+        case 12: score = score_chance(dice); break;
+    }
+    scores[choice - 1] = score; // Record the score
+    used_categories[choice - 1] = 1; // Mark the category as used
+    printf("%d points scored in the chosen category.\n", score);
+}
 
 /* Display the score table */
 void display_score_table(int player_scores[], int computer_scores[]) {
@@ -338,33 +548,46 @@ void display_score_table(int player_scores[], int computer_scores[]) {
     int bonus = check_bonus(player_scores);
     int total_score = calc_total_score(player_scores);
 
+    char score_str[10];
+
     // Printing the score table
     printf("\n***************** YAHTZEE SCORE TABLE *****************\n");
     printf("-------------------------------------------------------\n");
     printf("| Category         |  Player Score  |  Computer Score |\n");
     printf("-------------------------------------------------------\n");
-    printf("| Ones (1s)        | %-14d | %-15s |\n", player_scores[0], " ");
-    printf("| Twos (2s)        | %-14d | %-15s |\n", player_scores[1], " ");
-    printf("| Threes (3s)      | %-14d | %-15s |\n", player_scores[2], " ");
-    printf("| Fours (4s)       | %-14d | %-15s |\n", player_scores[3], " ");
-    printf("| Fives (5s)       | %-14d | %-15s |\n", player_scores[4], " ");
-    printf("| Sixes (6s)       | %-14d | %-15s |\n", player_scores[5], " ");
+    printf("| Ones (1s)        | %-14s | %-15s |\n", print_score_in_table(player_scores[0], score_str), print_score_in_table(computer_scores[0], score_str));
+    printf("| Twos (2s)        | %-14s | %-15s |\n", print_score_in_table(player_scores[1], score_str), print_score_in_table(computer_scores[1], score_str));
+    printf("| Threes (3s)      | %-14s | %-15s |\n", print_score_in_table(player_scores[2], score_str), print_score_in_table(computer_scores[2], score_str));
+    printf("| Fours (4s)       | %-14s | %-15s |\n", print_score_in_table(player_scores[3], score_str), print_score_in_table(computer_scores[3], score_str));
+    printf("| Fives (5s)       | %-14s | %-15s |\n", print_score_in_table(player_scores[4], score_str), print_score_in_table(computer_scores[4], score_str));
+    printf("| Sixes (6s)       | %-14s | %-15s |\n", print_score_in_table(player_scores[5], score_str), print_score_in_table(computer_scores[5], score_str));
     printf("-------------------------------------------------------\n");
-    printf("| Sum              | %-14d | %-15s |\n", singles_sum, " ");
-    printf("| Bonus            | %-14d | %-15s |\n", bonus, " ");
+    printf("| Sum              | %-14d | %-15s |\n", singles_sum, "-");
+    printf("| Bonus            | %-14d | %-15s |\n", bonus, "-");
     printf("-------------------------------------------------------\n");
-    printf("| Three of a Kind  | %-14d | %-15s |\n", player_scores[6], " ");
-    printf("| Four of a Kind   | %-14d | %-15s |\n", player_scores[7], " ");
-    printf("| Full House       | %-14d | %-15s |\n", player_scores[8], " ");
-    printf("| Small Straight   | %-14d | %-15s |\n", player_scores[9], " ");
-    printf("| Large Straight   | %-14d | %-15s |\n", player_scores[10], " ");
-    printf("| Chance           | %-14d | %-15s |\n", player_scores[11], " ");
-    printf("| Yahtzee          | %-14d | %-15s |\n", player_scores[12], " ");
+    printf("| Three of a Kind  | %-14s | %-15s |\n", print_score_in_table(player_scores[6], score_str), print_score_in_table(computer_scores[6], score_str));
+    printf("| Four of a Kind   | %-14s | %-15s |\n", print_score_in_table(player_scores[7], score_str), print_score_in_table(computer_scores[7], score_str));
+    printf("| Full House       | %-14s | %-15s |\n", print_score_in_table(player_scores[8], score_str), print_score_in_table(computer_scores[8], score_str));
+    printf("| Small Straight   | %-14s | %-15s |\n", print_score_in_table(player_scores[9], score_str), print_score_in_table(computer_scores[9], score_str));
+    printf("| Large Straight   | %-14s | %-15s |\n", print_score_in_table(player_scores[10], score_str), print_score_in_table(computer_scores[10], score_str));
+    printf("| Chance           | %-14s | %-15s |\n", print_score_in_table(player_scores[11], score_str), print_score_in_table(computer_scores[11], score_str));
+    printf("| Yahtzee          | %-14s | %-15s |\n", print_score_in_table(player_scores[12], score_str), print_score_in_table(computer_scores[12], score_str));
     printf("-------------------------------------------------------\n");
-    printf("| Total Score      | %-14d | %-15s |\n", total_score, " ");
+    printf("| Total Score      | %-14d | %-15s |\n", total_score, "-");
     printf("-------------------------------------------------------\n");
     printf("\n");
 }
+
+/* Making the score in a scoring category display a blank space until user scores in that category */
+char* print_score_in_table(int score, char *score_str) {
+        if (score == 0) {
+            return " "; // Return a space if no score in that category yet
+        }
+        else {
+            sprintf(score_str, "%d", score); // Convert score to string
+            return score_str; // Return the score as a string
+        }
+    }
 
 /* Calculate the sum of scores of singles (1 to 6) */
 int calc_score_of_singles(int player_scores[]) {
@@ -403,125 +626,4 @@ int check_bonus(int player_scores[]) {
         bonus = 0; // If not eligible for a bonus initailizing bonus to 0
     }
     return bonus; // Returning bonus
-}
-
-/* Human player's turn */
-void player_turn(int dice[], int roll_limit, int player_used_categories[], int player_scores[]) {
-    printf("*** Player's turn ***\n");
-
-        int roll_count = 0; // Resetting the number of rolls for each round 
-
-        // Initial dice roll
-        roll_dice(dice); // Roll all dice
-        display_dice(dice); // Show the initial roll
-
-        // Loop until the player reaches the maximum rolls allowed
-        while (1) {
-            if (roll_count < roll_limit) {
-                // Prompt the user to choose to re-roll or choose a scoring category
-                int choice;
-                printf("Choose an option >>> \n");
-                printf("1. Re-roll\n");
-                printf("2. Choose scoring category\n");
-                printf("\n");
-                printf("Enter your choice (1 or 2): ");
-                scanf("%d", &choice);
-                printf("\n");
-
-                if (choice == 1) {
-                    if (roll_count < roll_limit) { // Check if re-rolls are still allowed
-                        int rolls_left = roll_limit - roll_count; // Calculate remaining rolls
-                        keep_dice(dice, rolls_left); // Ask the player which dice to keep or re-roll
-                        roll_count++; // Increment roll count after each roll
-                    }
-                }
-                else if (choice == 2) {
-                    choose_scoring_category(dice, player_used_categories, player_scores);
-                    break; // Exit the loop after scoring
-                }
-                else {
-                    printf("Invalid choice! Please enter 1 or 2.\n");
-                    continue; // Continue loop until a valid input has entered
-                }
-            }
-            else {
-                // Only allow scoring category selection if maximum rolls are exceeded
-                printf("You have reached the maximum number of rolls for this turn.\n\n");
-                choose_scoring_category(dice, player_used_categories, player_scores);
-                break; // Exit the loop after scoring
-            }
-        }
-}
-
-/* Computer AI's turn */
-void computer_turn(int dice[], int roll_limit, int computer_used_categories[], int computer_scores[]) {
-    printf("*** Computer's turn ***\n");
-
-    int roll_count = 0; // Reset the roll count for the computer's turn
-
-    roll_dice(dice); // Initial roll
-    display_dice(dice);
-    
-    while (roll_count < roll_limit - 1) {
-        roll_count++;
-        roll_dice(dice); // Re-roll all dice
-        display_dice(dice);
-    }
-
-    int choice;
-    int score = 0;
-
-    do {
-        choice = rand() % NUM_OF_SCORING_CATAGORIES + 1; // Random number between 1 and 13
-    } while (computer_used_categories[choice - 1] == 1);
-
-    switch (choice) {
-    case 1:
-        score = score_single_numbers(dice, 1);
-        break;
-    case 2:
-        score = score_single_numbers(dice, 2);
-        break;
-    case 3:
-        score = score_single_numbers(dice, 3);
-        break;
-    case 4:
-        score = score_single_numbers(dice, 4);
-        break;
-    case 5:
-        score = score_single_numbers(dice, 5);
-        break;
-    case 6:
-        score = score_single_numbers(dice, 6);
-        break;
-    case 7:
-        score = score_three_of_a_kind(dice);
-        break;
-    case 8:
-        score = score_four_of_a_kind(dice);
-        break;
-    case 9:
-        score = score_full_house(dice);
-        break;
-    case 10:
-        score = score_small_straight(dice);
-        break;
-    case 11:
-        score = score_large_straight(dice);
-        break;
-    case 12:
-        score = score_chance(dice);
-        break;
-    case 13:
-        score = score_yahtzee(dice);
-        break;
-    default:
-        printf("Invalid choice!\n");
-        break;
-    }
-
-    computer_scores[choice - 1] = score;
-    computer_used_categories[choice - 1] = 1;
-
-    printf("Computer chose category %d and scored %d points.\n", choice, score);
 }
