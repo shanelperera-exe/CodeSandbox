@@ -5,6 +5,7 @@
 // Defining constants
 #define NUM_OF_DICE 5
 #define NUM_OF_SCORING_CATEGORIES 13
+#define FULL_HOUSE_POINTS 25
 #define SMALL_STRAIGHT_POINTS 30
 #define LARGE_STRAIGHT_POINTS 40
 #define BONUS_POINTS_THRESHOLD 63
@@ -16,13 +17,16 @@
 void roll_dice(int dice[]);
 void keep_dice(int dice[], int rolls_left);
 void display_dice(int dice[]);
+int score_based_on_categories(int choice, int dice[]);
 void player_choose_scoring_category(int dice[], int player_used_categories[], int player_scores[]);
+void computer_choose_scoring_category(int dice[], int computer_scores[], int computer_used_categories[]);
 void display_score_table(int player_scores[], int computer_scores[]);
 int calc_score_of_singles(int player_scores[]);
 int check_bonus(int player_scores[]);
 int calc_total_score(int player_scores[]);
 void player_turn(int dice[], int roll_limit, int player_used_categories[], int player_scores[]);
 void computer_turn(int dice[], int roll_limit, int computer_used_categories[], int computer_scores[]);
+void decide_dice_to_reroll(int dice[], int reroll[]);
 char* convert_score_to_str(int score, char *score_str);
 // Scoring functions
 int score_single_numbers (int dice[], int number);
@@ -42,7 +46,7 @@ void joker(int dice[], int used_categories[], int scores[], int yahtzee_value);
 int main(void) {
     int dice[NUM_OF_DICE];
     int roll_count; // Counter for the number of rolls
-    const int roll_limit = 10; // Defining the roll limit
+    const int roll_limit = 3; // Defining the roll limit
     int player_scores[NUM_OF_SCORING_CATEGORIES] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // Array to store human player scores for each category
     int player_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
     int computer_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
@@ -157,21 +161,74 @@ void computer_turn(int dice[], int roll_limit, int computer_used_categories[], i
     
     while (roll_count < roll_limit - 1) {
         roll_count++;
-        roll_dice(dice); // Re-roll all dice
+        
+        int reroll[NUM_OF_DICE] = {1, 1, 1, 1, 1}; // Initially set all to reroll
+
+        // Decision-making for keeping or rerolling dice
+        decide_dice_to_reroll(dice, reroll);
+
+        // Reroll selected dice
+        for (int i = 0; i < NUM_OF_DICE; i++) {
+            if (reroll[i] == 1) { // Check if the die is marked for re-rolling
+                dice[i] = rand() % 6 + 1; // Reroll it
+            }
+        }
         display_dice(dice);
     }
 
-    int choice;
-    int score = 0;
+    computer_choose_scoring_category(dice, computer_scores, computer_used_categories);
+}
 
-    do {
-        choice = rand() % NUM_OF_SCORING_CATEGORIES + 1; // Random number between 1 and 13
-    } while (computer_used_categories[choice - 1] == 1);
+void decide_dice_to_reroll(int dice[], int reroll[]) {
+    int counts[7] = {0}; // Index 0 will not be used
 
-    computer_scores[choice - 1] = score;
-    computer_used_categories[choice - 1] = 1;
+    // Count occurrences of each die value (1 to 6)
+    for (int i = 0; i < NUM_OF_DICE; i++) {
+        counts[dice[i]]++;
+    }
 
-    printf("Computer chose category %d and scored %d points.\n", choice, score);
+    // Assume all dice will be rerolled
+    for (int i = 0; i < NUM_OF_DICE; i++) {
+        reroll[i] = 1; 
+    }
+
+    // Logic: Keep if there are 3 or more of the same dice value, else reroll all
+    for (int value = 1; value <= 6; value++) {
+        if (counts[value] >= 3) {
+            // Keep the dice of this value
+            for (int i = 0; i < NUM_OF_DICE; i++) {
+                if (dice[i] == value) {
+                    reroll[i] = 0; // Don't re-roll
+                }
+            }
+            break; // Only keep dice of one good value for now
+        }
+    }
+}
+
+void computer_choose_scoring_category(int dice[], int computer_scores[], int computer_used_categories[]) {
+    int best_choice = -1;
+    int best_score = -1;
+
+    // Evaluate each category
+    for (int category = 0; category < NUM_OF_SCORING_CATEGORIES; category++) {
+        if (computer_used_categories[category] == 0) { // Check if not already used
+            int score = score_based_on_categories(category + 1, dice); // Score function assumes 1-based category index
+            if (score > best_score) {
+                best_score = score;
+                best_choice = category; // Track the best category
+            }
+        }
+    }
+
+    // Record the best choice
+    if (best_choice != -1) {
+        computer_scores[best_choice] = best_score; // Assign score to the category
+        computer_used_categories[best_choice] = 1; // Mark as used
+        printf("Computer chose category %d and scored %d points.\n", best_choice + 1, best_score);
+    } else {
+        printf("Computer has no scoring options left.\n");
+    }
 }
 
 /* Rolling 5 dice*/
@@ -183,7 +240,7 @@ void roll_dice(int dice[]) {
 
 /* Choosing the dice to keep or re-roll */
 void keep_dice(int dice[], int rolls_left) {
-    int keep[NUM_OF_DICE];
+    int keep[NUM_OF_DICE]; // Keeping dice are marked as 1 while rerolling dice are marked 0
 
     // Asking user which dice to be ee-rolled and which dice to keep. (1 to keep, 0 to re-roll)
     printf("Enter 1 to keep the die, 0 to re-roll:\n");
@@ -288,58 +345,51 @@ void player_choose_scoring_category(int dice[], int player_used_categories[], in
         }
     }
 
-    int score = 0; // Initialize score variable
-
-    // Determine the score based on the chosen category
-    switch (choice) {
-    case 1:
-        score = score_single_numbers(dice, 1);
-        break;
-    case 2:
-        score = score_single_numbers(dice, 2);
-        break;
-    case 3:
-        score = score_single_numbers(dice, 3);
-        break;
-    case 4:
-        score = score_single_numbers(dice, 4);
-        break;
-    case 5:
-        score = score_single_numbers(dice, 5);
-        break;
-    case 6:
-        score = score_single_numbers(dice, 6);
-        break;
-    case 7:
-        score = score_three_of_a_kind(dice);
-        break;
-    case 8:
-        score = score_four_of_a_kind(dice);
-        break;
-    case 9:
-        score = score_full_house(dice);
-        break;
-    case 10:
-        score = score_small_straight(dice);
-        break;
-    case 11:
-        score = score_large_straight(dice);
-        break;
-    case 12:
-        score = score_chance(dice);
-        break;
-    case 13:
-        score = score_yahtzee(dice);
-        break;
-    default:
-        printf("Invalid choice!\n");
-        break;
+    int score = score_based_on_categories(choice, dice);
+    if (score == 0) {
+        printf("Invalid input.\n");
     }
 
     player_scores[choice - 1] = score; // Store the score for the chosen category
     player_used_categories[choice - 1] = 1; // Mark the category as used
     
     printf("%d points scored.\n", score); // Display the score
+}
+
+int score_based_on_categories(int choice, int dice[]) {
+    int score = 0; // Initialize score variable
+
+    // Determine the score based on the chosen category
+    switch (choice) {
+        case 1:
+            return score_single_numbers(dice, 1);
+        case 2:
+            return score_single_numbers(dice, 2);
+        case 3:
+            return score_single_numbers(dice, 3);
+        case 4:
+            return score_single_numbers(dice, 4);
+        case 5:
+            return score_single_numbers(dice, 5);
+        case 6:
+            return score_single_numbers(dice, 6);
+        case 7:
+            return score_three_of_a_kind(dice);
+        case 8:
+            return score_four_of_a_kind(dice);
+        case 9:
+            return score_full_house(dice);
+        case 10:
+            return score_small_straight(dice);
+        case 11:
+            return score_large_straight(dice);
+        case 12:
+            return score_chance(dice);
+        case 13:
+            return score_yahtzee(dice);
+        default:
+            return 0;
+    }
 }
 
 /* Scoring for single numbers (1 to 6) */
@@ -416,7 +466,7 @@ int score_full_house(int dice[]) {
         }
     }
     if (three_of_a_kind && pair) {
-        return 25;  // Return 25 points for a Full House
+        return FULL_HOUSE_POINTS;  // Return 25 points for a Full House
     }
     return 0; // Returning 0 if no full house found.
 }
