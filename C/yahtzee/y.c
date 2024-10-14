@@ -20,14 +20,15 @@ void display_dice(int dice[]);
 int score_based_on_categories(int choice, int dice[]);
 void player_choose_scoring_category(int dice[], int player_used_categories[], int player_scores[]);
 void computer_choose_scoring_category(int dice[], int computer_scores[], int computer_used_categories[]);
-void display_score_table(int player_scores[], int computer_scores[]);
-int calc_score_of_singles(int player_scores[]);
-int check_bonus(int player_scores[]);
-int calc_total_score(int player_scores[]);
+void display_score_table(int player_scores[], int computer_scores[], int game_over);
+int calc_score_of_singles(int scores[]);
+int check_bonus(int scores[]);
+int calc_total_score(int scores[]);
 void player_turn(int dice[], int roll_limit, int player_used_categories[], int player_scores[]);
 void computer_turn(int dice[], int roll_limit, int computer_used_categories[], int computer_scores[]);
 void decide_dice_to_reroll(int dice[], int reroll[]);
 char* convert_score_to_str(int score, char *score_str);
+int all_singles_scored(int scores[]);
 // Scoring functions
 int score_single_numbers (int dice[], int number);
 int score_three_of_a_kind(int dice[]);
@@ -54,14 +55,21 @@ int main(void) {
 
     srand(time(NULL)); // Seed the random number generator using current time
 
+    int game_over = 0; // Flag to check if the game has ended (Initializing game_over to false)
+
     for (int round = 0; round < NUM_OF_SCORING_CATEGORIES; round++) {
-        display_score_table(player_scores, computer_scores);
+        display_score_table(player_scores, computer_scores, game_over); // Display the score table at the beginning of the each round
         printf("*** ROUND %d ***\n", round + 1); // Displaying round number
         printf("\n");
         
-        player_turn(dice, roll_limit, player_used_categories, player_scores);
-        computer_turn(dice, roll_limit, computer_used_categories, computer_scores);
+        player_turn(dice, roll_limit, player_used_categories, player_scores); // Player's turn
+        computer_turn(dice, roll_limit, computer_used_categories, computer_scores); // Computer's turn
     }
+
+    game_over = 1; // After all rounds are complete, set game_over to true
+
+    display_score_table(player_scores, computer_scores, game_over); // Display the final score table with the total scores
+
     return 0;
 }
 
@@ -637,40 +645,64 @@ void player_choose_lower_category(int dice[], int player_used_categories[], int 
 }
 
 /* Display the score table */
-void display_score_table(int player_scores[], int computer_scores[]) {
+void display_score_table(int player_scores[], int computer_scores[], int game_over) {
 
-    int singles_sum = calc_score_of_singles(player_scores);
-    int bonus = check_bonus(player_scores);
-    int total_score = calc_total_score(player_scores);
+    int player_singles_sum = calc_score_of_singles(player_scores); // Calculate the sum of single scores (1 to 6) of the player
+    int player_bonus = check_bonus(player_scores); // Check whether the player is eligible for a bonus or not
 
-    char score_str[10];
-    int singles_scored = singles_sum > 0; // Check if any singles have been scored
-    int bonus_scored = bonus > 0; // Check if the bonus has been scored
+    int computer_singles_sum = calc_score_of_singles(computer_scores); // Calculate the sum of single scores (1 to 6) of the computer
+    int computer_bonus = check_bonus(computer_scores); // Check whether the computer is eligible for a bonus or not
+
+    char player_score_str[10];   // Buffer for player scores
+    char computer_score_str[10]; // Buffer for computer scores
+
+    // Check if all singles have been scored
+    int player_singles_scored = all_singles_scored(player_scores);
+    int computer_singles_scored = all_singles_scored(computer_scores);
 
     // Printing the score table
     printf("\n***************** YAHTZEE SCORE TABLE *****************\n");
     printf("-------------------------------------------------------\n");
     printf("| Category         |  Player Score  |  Computer Score |\n");
     printf("-------------------------------------------------------\n");
-    printf("| Ones (1s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[0], score_str), convert_score_to_str(computer_scores[0], score_str));
-    printf("| Twos (2s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[1], score_str), convert_score_to_str(computer_scores[1], score_str));
-    printf("| Threes (3s)      | %-14s | %-15s |\n", convert_score_to_str(player_scores[2], score_str), convert_score_to_str(computer_scores[2], score_str));
-    printf("| Fours (4s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[3], score_str), convert_score_to_str(computer_scores[3], score_str));
-    printf("| Fives (5s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[4], score_str), convert_score_to_str(computer_scores[4], score_str));
-    printf("| Sixes (6s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[5], score_str), convert_score_to_str(computer_scores[5], score_str));
+    printf("| Ones (1s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[0], player_score_str), convert_score_to_str(computer_scores[0], player_score_str));
+    printf("| Twos (2s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[1], player_score_str), convert_score_to_str(computer_scores[1], player_score_str));
+    printf("| Threes (3s)      | %-14s | %-15s |\n", convert_score_to_str(player_scores[2], player_score_str), convert_score_to_str(computer_scores[2], player_score_str));
+    printf("| Fours (4s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[3], player_score_str), convert_score_to_str(computer_scores[3], player_score_str));
+    printf("| Fives (5s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[4], player_score_str), convert_score_to_str(computer_scores[4], player_score_str));
+    printf("| Sixes (6s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[5], player_score_str), convert_score_to_str(computer_scores[5], player_score_str));
     printf("-------------------------------------------------------\n");
-    printf("| Sum              | %-14s | %-15s |\n", singles_scored ? convert_score_to_str(singles_sum, score_str) : " ", " ");
-    printf("| Bonus            | %-14s | %-15s |\n", bonus_scored ? convert_score_to_str(bonus, score_str) : " ", " ");
+
+    // Display singles sum and bonus only if all singles have been scored
+    if (player_singles_scored) {
+        printf("| Sum              | %-14s | %-15s |\n", convert_score_to_str(player_singles_sum, player_score_str), convert_score_to_str(computer_singles_sum, computer_score_str));
+        printf("| Bonus            | %-14s | %-15s |\n", convert_score_to_str(player_bonus, player_score_str), convert_score_to_str(computer_bonus, computer_score_str));
+    }
+    else {
+        printf("| Sum              | %-14s | %-15s |\n", " ", " "); // Blank if not all singles are scored
+        printf("| Bonus            | %-14s | %-15s |\n", " ", " "); // Blank if not all singles are scored
+    }
+
     printf("-------------------------------------------------------\n");
-    printf("| Three of a Kind  | %-14s | %-15s |\n", convert_score_to_str(player_scores[6], score_str), convert_score_to_str(computer_scores[6], score_str));
-    printf("| Four of a Kind   | %-14s | %-15s |\n", convert_score_to_str(player_scores[7], score_str), convert_score_to_str(computer_scores[7], score_str));
-    printf("| Full House       | %-14s | %-15s |\n", convert_score_to_str(player_scores[8], score_str), convert_score_to_str(computer_scores[8], score_str));
-    printf("| Small Straight   | %-14s | %-15s |\n", convert_score_to_str(player_scores[9], score_str), convert_score_to_str(computer_scores[9], score_str));
-    printf("| Large Straight   | %-14s | %-15s |\n", convert_score_to_str(player_scores[10], score_str), convert_score_to_str(computer_scores[10], score_str));
-    printf("| Chance           | %-14s | %-15s |\n", convert_score_to_str(player_scores[11], score_str), convert_score_to_str(computer_scores[11], score_str));
-    printf("| Yahtzee          | %-14s | %-15s |\n", convert_score_to_str(player_scores[12], score_str), convert_score_to_str(computer_scores[12], score_str));
+    printf("| Three of a Kind  | %-14s | %-15s |\n", convert_score_to_str(player_scores[6], player_score_str), convert_score_to_str(computer_scores[6], computer_score_str));
+    printf("| Four of a Kind   | %-14s | %-15s |\n", convert_score_to_str(player_scores[7], player_score_str), convert_score_to_str(computer_scores[7], computer_score_str));
+    printf("| Full House       | %-14s | %-15s |\n", convert_score_to_str(player_scores[8], player_score_str), convert_score_to_str(computer_scores[8], computer_score_str));
+    printf("| Small Straight   | %-14s | %-15s |\n", convert_score_to_str(player_scores[9], player_score_str), convert_score_to_str(computer_scores[9], computer_score_str));
+    printf("| Large Straight   | %-14s | %-15s |\n", convert_score_to_str(player_scores[10], player_score_str), convert_score_to_str(computer_scores[10], computer_score_str));
+    printf("| Chance           | %-14s | %-15s |\n", convert_score_to_str(player_scores[11], player_score_str), convert_score_to_str(computer_scores[11], computer_score_str));
+    printf("| Yahtzee          | %-14s | %-15s |\n", convert_score_to_str(player_scores[12], player_score_str), convert_score_to_str(computer_scores[12], computer_score_str));
     printf("-------------------------------------------------------\n");
-    printf("| Total Score      | %-14s | %-15s |\n", convert_score_to_str(total_score, score_str), " ");
+
+    // Display the total score only if the game is over
+    if (game_over) {
+        int player_total_score = calc_total_score(player_scores); // Calculate the total score of the player
+        int computer_total_score = calc_total_score(computer_scores); // Calculate the total score of the computer
+        printf("| Total Score      | %-14s | %-15s |\n", convert_score_to_str(player_total_score, player_score_str), convert_score_to_str(computer_total_score, computer_score_str));
+    }
+    else {
+        printf("| Total Score      | %-14s | %-15s |\n", " ", " "); // Display blank spaces for the total_score if the game isn't over
+    }
+
     printf("-------------------------------------------------------\n");
     printf("\n");
 }
@@ -687,28 +719,28 @@ char* convert_score_to_str(int score, char *score_str) {
     }
 
 /* Calculate the sum of scores of singles (1 to 6) */
-int calc_score_of_singles(int player_scores[]) {
+int calc_score_of_singles(int scores[]) {
     int singles_sum = 0;
     for (int i = 0; i < 6; i++) {
-        if (player_scores[i] >= 0) {
-            singles_sum += player_scores[i];
+        if (scores[i] >= 0) {
+            singles_sum += scores[i];
         }
     }
     return singles_sum; // Returning the sum of the scores of singles
 }
 
 /* Calculate the total score including the bonus for singles */
-int calc_total_score(int player_scores[]) {
+int calc_total_score(int scores[]) {
     int total_score = 0;
 
     // Sum scores for all categories
     for (int i = 0; i < NUM_OF_SCORING_CATEGORIES; i++) {
-        if (player_scores[i] >= 0) {
-            total_score += player_scores[i];
+        if (scores[i] >= 0) {
+            total_score += scores[i];
         }
     }
 
-    int bonus = check_bonus(player_scores); // Checking for a bonus
+    int bonus = check_bonus(scores); // Checking for a bonus
     if (bonus) {
         total_score += bonus;
     }
@@ -717,9 +749,9 @@ int calc_total_score(int player_scores[]) {
 }
 
 /* Check if the player has won bonus points */
-int check_bonus(int player_scores[]) {
+int check_bonus(int scores[]) {
     int bonus;
-    int singles_sum = calc_score_of_singles(player_scores); // Get the sum of the scores of singles (1 to 6)
+    int singles_sum = calc_score_of_singles(scores); // Get the sum of the scores of singles (1 to 6)
     if (singles_sum >= BONUS_POINTS_THRESHOLD) {  // Checking if the player is eligible for a bonus
             bonus = BONUS;
     }
@@ -727,4 +759,13 @@ int check_bonus(int player_scores[]) {
         bonus = 0; // If not eligible for a bonus initailizing bonus to 0
     }
     return bonus; // Returning bonus
+}
+
+int all_singles_scored(int scores[]) {
+    for (int i = 0; i < 6; i++) { // Check indices 0 to 5 for ones to sixes
+        if (scores[i] == -1) {
+            return 0; // Return 0 if any single category is unscored
+        } 
+    }
+    return 1; // Return 1 if all singles are scored
 }
