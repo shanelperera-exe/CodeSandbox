@@ -12,23 +12,41 @@
 #define BONUS 35
 #define YAHTZEE_SCORE 50
 #define MULTI_YAHTZEE_BONUS 100
+#define FOURS 3
+#define FIVES 4
+#define SIXES 5
+#define THREE_OF_A_KIND 6
+#define FOUR_OF_A_KIND 7
+#define FULL_HOUSE 8
+#define SMALL_STRAIGHT 9
+#define LARGE_STRAIGHT 10
+#define CHANCE 11
+#define YAHTZEE 12
+
+#define ROLL_LIMIT 3
 
 /* Function declarations */
+void game();
 void roll_dice(int dice[]);
 void keep_dice(int dice[], int rolls_left);
 void display_dice(int dice[]);
 int score_based_on_categories(int choice, int dice[]);
 void player_choose_scoring_category(int dice[], int player_used_categories[], int player_scores[]);
-void computer_choose_scoring_category(int dice[], int computer_scores[], int computer_used_categories[]);
+int computer_choose_scoring_category(int dice[], int computer_scores[], int computer_used_categories[], int roll_count);
 void display_score_table(int player_scores[], int computer_scores[], int game_over);
 int calc_score_of_singles(int scores[]);
 int check_bonus(int scores[]);
 int calc_total_score(int scores[]);
-void player_turn(int dice[], int roll_limit, int player_used_categories[], int player_scores[]);
-void computer_turn(int dice[], int roll_limit, int computer_used_categories[], int computer_scores[]);
-void decide_dice_to_reroll(int dice[], int reroll[]);
+void player_turn(int dice[], int player_used_categories[], int player_scores[]);
+void computer_turn(int dice[], int computer_used_categories[], int computer_scores[]);
+void decide_dice_to_reroll(int dice[], int reroll[], int computer_used_categories[], int roll_count);
 char* convert_score_to_str(int score, char *score_str);
 int all_singles_scored(int scores[]);
+void display_winner(int player_scores[], int computer_scores[]);
+void logo(void);
+void game(void);
+void main_menu(void);
+void display_rules(void);
 // Scoring functions
 int score_single_numbers (int dice[], int number);
 int score_three_of_a_kind(int dice[]);
@@ -44,10 +62,18 @@ int check_bonus(int player_scores[]);
 void player_handle_multiple_yahtzees(int dice[], int player_used_categories[], int player_scores[]);
 void joker(int dice[], int used_categories[], int scores[], int yahtzee_value);
 
+
 int main(void) {
+    logo();
+    printf("\n***** Welcome to Yahtzee! *****\n\n");
+    main_menu();
+
+    return 0;
+}
+
+void game(void) {
     int dice[NUM_OF_DICE];
     int roll_count; // Counter for the number of rolls
-    const int roll_limit = 3; // Defining the roll limit
     int player_scores[NUM_OF_SCORING_CATEGORIES] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // Array to store human player scores for each category
     int player_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
     int computer_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
@@ -62,39 +88,39 @@ int main(void) {
         printf("*** ROUND %d ***\n", round + 1); // Displaying round number
         printf("\n");
         
-        player_turn(dice, roll_limit, player_used_categories, player_scores); // Player's turn
-        computer_turn(dice, roll_limit, computer_used_categories, computer_scores); // Computer's turn
+        player_turn(dice, player_used_categories, player_scores); // Player's turn
+        computer_turn(dice, computer_used_categories, computer_scores); // Computer's turn
     }
 
     game_over = 1; // After all rounds are complete, set game_over to true
 
     display_score_table(player_scores, computer_scores, game_over); // Display the final score table with the total scores
 
-    return 0;
+    display_winner(player_scores, computer_scores);
 }
 
 /* Human player's turn */
-void player_turn(int dice[], int roll_limit, int player_used_categories[], int player_scores[]) {
+void player_turn(int dice[], int player_used_categories[], int player_scores[]) {
     printf("*** Player's turn ***\n");
-    int roll_count = 0; // Resetting the number of rolls for each round
-    const int YAHTZEE_INDEX = 12; 
+    int roll_count = 0; // Resetting the number of rolls for each round 
 
     // Initial dice roll
     roll_dice(dice); // Roll all dice
+    roll_count++;
     display_dice(dice); // Show the initial roll
         
     // Check if it's a Yahtzee immediately after the first roll
-    if (score_yahtzee(dice) == YAHTZEE_SCORE) {
+    if (score_yahtzee(dice) == YAHTZEE) {
         printf("You scored a Yahtzee!\n");
         
         // Check if it's the first Yahtzee or a subsequent one
-        if (player_used_categories[YAHTZEE_INDEX] == 1) {
+        if (player_used_categories[YAHTZEE] == 1) {
             // Handle multiple Yahtzees (awarding bonus points or joker)
             player_handle_multiple_yahtzees(dice, player_used_categories, player_scores);
         } else {
             // First Yahtzee: score it normally and mark the category as used
-            player_scores[YAHTZEE_INDEX] = YAHTZEE_SCORE;
-            player_used_categories[YAHTZEE_INDEX] = 1;
+            player_scores[YAHTZEE] = YAHTZEE_SCORE;
+            player_used_categories[YAHTZEE] = 1;
             printf("Scored 50 points in the Yahtzee category.\n");
         }
         return; // End the turn immediately if Yahtzee is scored
@@ -105,20 +131,20 @@ void player_turn(int dice[], int roll_limit, int player_used_categories[], int p
         // Handle multiple Yahtzees before player chooses scoring category
         player_handle_multiple_yahtzees(dice, player_used_categories, player_scores);
 
-        if (roll_count < roll_limit - 1) {
+        if (roll_count < ROLL_LIMIT) {
         // Prompt the user to choose to re-roll or choose a scoring category
-            int choice;
+            char choice;
             printf("Choose an option >>> \n");
-            printf("1. Re-roll\n");
-            printf("2. Choose scoring category\n");
+            printf("[r] Re-roll\n");
+            printf("[c] Choose scoring category\n");
             printf("\n");
-            printf("Enter your choice (1 or 2): ");
-            scanf("%d", &choice);
+            printf("Enter your choice [r] or [c]: ");
+            scanf("%c", &choice);
             printf("\n");
 
-            if (choice == 1) {
-                if (roll_count < roll_limit - 1) { // Check if re-rolls are still allowed
-                    int rolls_left = roll_limit - roll_count; // Calculate remaining rolls
+            if (choice == 'r' || choice == 'R') {
+                if (roll_count < ROLL_LIMIT) { // Check if re-rolls are still allowed
+                    int rolls_left = ROLL_LIMIT - roll_count; // Calculate remaining rolls
                     keep_dice(dice, rolls_left); // Ask the player which dice to keep or re-roll
                     roll_count++; // Increment roll count after each roll
 
@@ -127,20 +153,20 @@ void player_turn(int dice[], int roll_limit, int player_used_categories[], int p
                         printf("You scored a Yahtzee!\n");
                         
                          // Check for multiple Yahtzees
-                        if (player_used_categories[YAHTZEE_INDEX] == 1) {
+                        if (player_used_categories[YAHTZEE] == 1) {
                             // Handle multiple Yahtzees (awarding bonus points or joker)
                             player_handle_multiple_yahtzees(dice, player_used_categories, player_scores);
                         } else {
                             // First Yahtzee: score it normally and mark the category as used
-                            player_scores[YAHTZEE_INDEX] = YAHTZEE_SCORE;
-                            player_used_categories[YAHTZEE_INDEX] = 1;
+                            player_scores[YAHTZEE] = YAHTZEE_SCORE;
+                            player_used_categories[YAHTZEE] = 1;
                             printf("Scored 50 points in the Yahtzee category.\n");
                         }
                         break; // End the turn if Yahtzee is scored after re-rolling
                     }
                 }
             }
-            else if (choice == 2) {
+            else if (choice == 'c' || choice == 'C') {
                 player_choose_scoring_category(dice, player_used_categories, player_scores);
                 break; // Exit the loop after scoring
             }
@@ -159,35 +185,60 @@ void player_turn(int dice[], int roll_limit, int player_used_categories[], int p
 }
 
 /* Computer AI's turn */
-void computer_turn(int dice[], int roll_limit, int computer_used_categories[], int computer_scores[]) {
+void computer_turn(int dice[], int computer_used_categories[], int computer_scores[]) {
     printf("*** Computer's turn ***\n");
 
     int roll_count = 0; // Reset the roll count for the computer's turn
+    int scored = 0;     // Variable to track if the computer has scored
 
     roll_dice(dice); // Initial roll
+    roll_count++;
     display_dice(dice);
-    
-    while (roll_count < roll_limit - 1) {
-        roll_count++;
-        
-        int reroll[NUM_OF_DICE] = {1, 1, 1, 1, 1}; // Initially set all to reroll
 
-        // Decision-making for keeping or rerolling dice
-        decide_dice_to_reroll(dice, reroll);
+    // Check for a scoring opportunity after the first roll (but don't force scoring unless it's a great option)
+    scored = computer_choose_scoring_category(dice, computer_scores, computer_used_categories, roll_count);
 
-        // Reroll selected dice
+    // Only score if there's a strong reason to end the turn (like a Yahtzee or Large Straight)
+    if (scored) {
+        printf("Computer has found a strong scoring option after the first roll.\n");
+        return; // End the turn if scored
+    }
+
+    // If the computer didn't score, continue with rerolls
+    while (roll_count < ROLL_LIMIT) {
+        int reroll[NUM_OF_DICE] = {1, 1, 1, 1, 1}; // Initially set all dice to reroll
+
+        // Decide which dice to reroll based on the current strategy
+        decide_dice_to_reroll(dice, reroll, computer_used_categories, roll_count);
+
+        // Perform the reroll
         for (int i = 0; i < NUM_OF_DICE; i++) {
-            if (reroll[i] == 1) { // Check if the die is marked for re-rolling
-                dice[i] = rand() % 6 + 1; // Reroll it
+            if (reroll[i] == 1) { // Reroll only marked dice
+                dice[i] = rand() % 6 + 1;
             }
         }
         display_dice(dice);
+
+        // Check again after each reroll
+        scored = computer_choose_scoring_category(dice, computer_scores, computer_used_categories, roll_count);
+        if (scored) {
+            printf("Computer has scored after rerolls, ending turn.\n");
+            return; // End the turn after scoring
+        }
+       
+        roll_count++;
     }
 
-    computer_choose_scoring_category(dice, computer_scores, computer_used_categories);
+    // After all rolls are used, if no scoring was made, choose the best option left
+    if (!scored) {
+        computer_choose_scoring_category(dice, computer_scores, computer_used_categories, roll_count);
+    } else {
+        printf("Computer had no scoring opportunities this turn.\n");
+    }
 }
 
-void decide_dice_to_reroll(int dice[], int reroll[]) {
+
+void decide_dice_to_reroll(int dice[], int reroll[], int computer_used_categories[], int roll_count) {
     int counts[7] = {0}; // Index 0 will not be used
 
     // Count occurrences of each die value (1 to 6)
@@ -195,13 +246,79 @@ void decide_dice_to_reroll(int dice[], int reroll[]) {
         counts[dice[i]]++;
     }
 
-    // Assume all dice will be rerolled
+    // Assume all dice will be rerolled initially
     for (int i = 0; i < NUM_OF_DICE; i++) {
-        reroll[i] = 1; 
+        reroll[i] = 1;
     }
 
-    // Logic: Keep if there are 3 or more of the same dice value, else reroll all
-    for (int value = 1; value <= 6; value++) {
+    // 1. Prioritize keeping all 6's, 5's, or 4's if going for high scores in the upper section
+    for (int value = 6; value >= 4; value--) {
+        if (counts[value] >= 3) {
+            for (int i = 0; i < NUM_OF_DICE; i++) {
+                if (dice[i] == value) {
+                    reroll[i] = 0; // Keep all 6's, 5's, or 4's
+                }
+            }
+        }
+    }
+
+    // 2. If the upper section categories for these high values are not yet filled, aim for them
+    for (int value = 6; value >= 1; value--) {
+        if (computer_used_categories[value - 1] == 0 && counts[value] >= 2) { // Favor filling upper section categories
+            for (int i = 0; i < NUM_OF_DICE; i++) {
+                if (dice[i] == value) {
+                    reroll[i] = 0; // Keep dice of that value
+                }
+            }
+        }
+    }
+
+    // 3. Check for possible straights
+    // Large straight (1, 2, 3, 4, 5 or 2, 3, 4, 5, 6)
+    if ((counts[1] && counts[2] && counts[3] && counts[4] && counts[5]) ||
+        (counts[2] && counts[3] && counts[4] && counts[5] && counts[6])) {
+        for (int i = 0; i < NUM_OF_DICE; i++) {
+            if (dice[i] == 1 || dice[i] == 2 || dice[i] == 3 || dice[i] == 4 || dice[i] == 5 || dice[i] == 6) {
+                reroll[i] = 0; // Keep 1, 2, 3, 4, 5 or 2, 3, 4, 5, 6 for large straight
+            }
+        }
+    }
+
+    // Small straight (1, 2, 3, 4 or 2, 3, 4, 5 or 3, 4, 5, 6)
+    if ((counts[1] && counts[2] && counts[3] && counts[4]) || 
+        (counts[2] && counts[3] && counts[4] && counts[5]) || 
+        (counts[3] && counts[4] && counts[5] && counts[6])) {
+        for (int i = 0; i < NUM_OF_DICE; i++) {
+            if (dice[i] == 1 || dice[i] == 2 || dice[i] == 3 || dice[i] == 4 || dice[i] == 5 || dice[i] == 6) {
+                reroll[i] = 0; // Keep the numbers for small straight
+            }
+        }
+        return; // Large straight already achieved, exit early
+    }
+
+    // reroll lower values and keep higher values
+    int decision_made = 0;
+    if (roll_count < ROLL_LIMIT) {
+        for (int high_value = 6; high_value >= 3; high_value--) {
+            for (int low_value = high_value - 1; low_value >= 1; low_value--) {
+                if (counts[high_value] >= 2 && counts[low_value] >= 2) {
+                    for (int i = 0; i < NUM_OF_DICE; i++) {
+                        if (dice[i] == high_value) {
+                            reroll[i] = 0; // Keep higher value dice
+                        } else if (dice[i] == low_value) {
+                            reroll[i] = 1; // Reroll lower value dice
+                        }
+                    }
+                    decision_made = 0;
+                    break; // Exit after making this decision
+                }
+            }
+            if (decision_made) break;
+        }
+    }
+    
+    // 4. Keep 3 or more of a kind (for Yahtzee, Full House, 4 of a Kind)
+    for (int value = 6; value >= 1; value--) { // Start from 6 to prioritize higher numbers
         if (counts[value] >= 3) {
             // Keep the dice of this value
             for (int i = 0; i < NUM_OF_DICE; i++) {
@@ -209,35 +326,196 @@ void decide_dice_to_reroll(int dice[], int reroll[]) {
                     reroll[i] = 0; // Don't re-roll
                 }
             }
-            break; // Only keep dice of one good value for now
+            break; // Keep dice of one strong value for now
+        }
+    }
+
+    // Keep any high dice (3, 4, 5, 6) for Chance
+    if (computer_used_categories[CHANCE] == 0) {
+        for (int i = 0; i < NUM_OF_DICE; i++) {
+            if (dice[i] >= 3) {
+                reroll[i] = 0; // Keep high dice for Chance
+            }
         }
     }
 }
 
-void computer_choose_scoring_category(int dice[], int computer_scores[], int computer_used_categories[]) {
-    int best_choice = -1;
-    int best_score = -1;
+int computer_choose_scoring_category(int dice[], int computer_scores[], int computer_used_categories[], int roll_count) {
+    int best_choice = -1;  // Initialize the best choice of category
+    int best_score = -1;   // Highest score the computer can get in any unscored category
+    int counts[7] = {0};   // Count occurrences of each dice value (1 to 6)
 
-    // Evaluate each category
-    for (int category = 0; category < NUM_OF_SCORING_CATEGORIES; category++) {
-        if (computer_used_categories[category] == 0) { // Check if not already used
-            int score = score_based_on_categories(category + 1, dice); // Score function assumes 1-based category index
+    // Count occurrences of each die value
+    for (int i = 0; i < NUM_OF_DICE; i++) {
+        counts[dice[i]]++; // Increment the count for each die value
+    }
+
+    // If this is the first roll, only consider very strong categories
+    if (roll_count < ROLL_LIMIT) {
+        // 1. Check for Yahtzee (if all dice are the same)
+        if (computer_used_categories[YAHTZEE] == 0) {
+            int score = score_yahtzee(dice);
             if (score > best_score) {
+                best_choice = YAHTZEE;
                 best_score = score;
-                best_choice = category; // Track the best category
+            }
+        }
+
+        // 2. Check for Large Straight first
+        if (computer_used_categories[LARGE_STRAIGHT] == 0) {
+            int score = score_large_straight(dice);
+            if (score > best_score) {
+                best_choice = LARGE_STRAIGHT;
+                best_score = score;
+            }
+        }
+
+        // 3. Check for Four of a Kind with high values (e.g., 4 6's or 5's)
+        if (computer_used_categories[FOUR_OF_A_KIND] == 0 && (counts[6] >= 4 || counts[5] >= 4)) {
+            int score = score_four_of_a_kind(dice);
+            if (score > best_score) {
+                best_choice = FOUR_OF_A_KIND;
+                best_score = score;
+            }
+        }
+
+        // 4. Check for Upper Section during the first roll, but only for high values (6's, 5's, optionally 4's)
+        for (int i = 6; i >= 4; i--) { // Only consider 6's, 5's, and 4's
+            if (computer_used_categories[i - 1] == 0 && counts[i] >= 4) { // If unscored and 3 or more dice
+                int score = score_single_numbers(dice, i); // Calculate the score for this number
+                if (score > best_score) { // If it's the best score found so far
+                    best_choice = i - 1;  // Choose this category
+                    best_score = score;
+                }
+            }
+        }
+
+        // 4. Check for Full House on the first roll unless there are three 6's or 5's
+        if (roll_count == 1 && computer_used_categories[FULL_HOUSE] == 0) {
+            int score = score_full_house(dice);
+            if (score > best_score && !(counts[6] == 3 || counts[5] == 3)) {
+                best_choice = FULL_HOUSE;
+                best_score = score;
+            }
+        }
+
+        // If no strong options are found, return 0 to indicate no scoring yet
+        if (best_choice != -1 && best_score > 0) {
+            computer_scores[best_choice] = best_score; // Update score
+            computer_used_categories[best_choice] = 1; // Mark category as used
+            printf("Computer chose category %d and scored %d points.\n", best_choice + 1, best_score);
+            return 1; // Indicate that the computer has scored
+        }
+
+        // If no strong categories were found, return 0 to allow rerolls
+        return 0;
+    }
+
+    // Prioritize Upper Section if a high occurrence of a number or aiming for the bonus
+    int upper_section_score = 0; // Variable to store potential upper section score
+    int upper_section_choice = -1; // Variable to store the chosen upper section category
+
+    // Check the upper section categories first, starting from the highest value (6's, then 5's, etc.)
+    for (int i = 6; i >= 1; i--) {
+        if (computer_used_categories[i - 1] == 0 && counts[i] >= 3) { // If category is unscored and has 3 or more dice
+            int score = score_single_numbers(dice, i); // Calculate the score for this number
+            if (score > upper_section_score) { // If it's a better upper section score
+                upper_section_score = score;
+                upper_section_choice = i - 1; // Save the choice for later
             }
         }
     }
 
-    // Record the best choice
-    if (best_choice != -1) {
-        computer_scores[best_choice] = best_score; // Assign score to the category
-        computer_used_categories[best_choice] = 1; // Mark as used
-        printf("Computer chose category %d and scored %d points.\n", best_choice + 1, best_score);
-    } else {
-        printf("Computer has no scoring options left.\n");
+    // If there is a strong upper section option (3 or more occurrences of a number), prioritize it
+    if (upper_section_choice != -1) {
+        // Prioritize scoring in the upper section if the upper section bonus hasn't been reached
+        if (calc_score_of_singles(computer_scores) < 63) {
+            best_choice = upper_section_choice;
+            best_score = upper_section_score;
+        }
     }
-}
+
+
+    // 2. Check for Yahtzee (if all dice are the same)
+    if (computer_used_categories[YAHTZEE] == 0) {
+        int score = score_yahtzee(dice);
+        if (score > best_score) {
+            best_choice = YAHTZEE;
+            best_score = score;
+        }
+    }
+
+    // 3. Check for Large Straight
+    if (computer_used_categories[LARGE_STRAIGHT] == 0) {
+        int score = score_large_straight(dice);
+        if (score > best_score) {
+            best_choice = LARGE_STRAIGHT;
+            best_score = score;
+        }
+    }
+
+    // 4. Prioritize Upper Section if a high occurrence of a number
+    for (int i = 6; i >= 1; i--) {  // Start from 6's, then 5's, and so on
+        if (computer_used_categories[i - 1] == 0 && counts[i] > 3) { // If the category is unscored
+            int score = score_single_numbers(dice, i); // Calculate the score for this number
+            if (counts[i] >= 3 && score > best_score) {  // Prioritize 3 or more occurrences
+                best_choice = i - 1;  // Choose the best upper section category
+                best_score = score;
+            }
+        }
+    }
+
+    // 5. Check for Full House, unless there are three 6's or 5's
+    if (computer_used_categories[FULL_HOUSE] == 0) {
+        int score = score_full_house(dice);
+        if (score > best_score && !(counts[6] == 3 || counts[5] == 3)) {
+            best_choice = FULL_HOUSE;
+            best_score = score;
+        }
+    }
+
+    // 6. Check for Three of a Kind after the upper section is filled
+    for (int i = 6; i >= 4; i--) { // Prioritize 6's, then 5's, then 4's
+        if (computer_used_categories[THREE_OF_A_KIND] == 0 && counts[i] >= 3) {
+            int score = score_three_of_a_kind(dice);
+            if (score > best_score) {
+                best_choice = THREE_OF_A_KIND;
+                best_score = score;
+            }
+        }
+    }
+
+    // 7. Check for Chance if nothing else fits
+    if (computer_used_categories[CHANCE] == 0) {
+        int score = score_chance(dice);
+        if (score > best_score) {
+            best_choice = CHANCE;
+            best_score = score;
+        }
+    }
+
+    // 8. Fallback: Check for other categories
+    for (int category = 0; category < NUM_OF_SCORING_CATEGORIES; category++) {
+        if (computer_used_categories[category] == 0) {
+            int score = score_based_on_categories(category + 1, dice);
+            if (score > best_score) {
+                best_score = score;
+                best_choice = category;
+            }
+        }
+    }
+
+    // Apply the best category choice
+    if (best_choice != -1 && best_score > 0) {
+        computer_scores[best_choice] = best_score; // Update score
+        computer_used_categories[best_choice] = 1; // Mark category as used
+        printf("Computer chose category %d and scored %d points.\n", best_choice + 1, best_score);
+        return 1; // Indicate that the computer has scored
+    }
+
+    return 0; // Indicate that no scoring opportunity was found
+
+}    
 
 /* Rolling 5 dice*/
 void roll_dice(int dice[]) {
@@ -336,10 +614,10 @@ void player_choose_scoring_category(int dice[], int player_used_categories[], in
     while (!valid_choice) {
         printf("Choice: ");
         scanf("%d", &choice); // Get the user's choice
+        printf("\n");
 
         // Check if the input is valid (between 1 and 13)
-        if (choice >= 1 && choice <= NUM_OF_SCORING_CATEGORIES
-    ) {
+        if (choice >= 1 && choice <= NUM_OF_SCORING_CATEGORIES) {
             // Check if the category has already been used
             if (player_used_categories[choice - 1] == 0) {
                 valid_choice = 1; // Input is valid
@@ -534,16 +812,15 @@ int score_yahtzee(int dice[]) {
 
 void player_handle_multiple_yahtzees(int dice[], int player_used_categories[], int player_scores[]) {
     int yahtzee_value = dice[0];  // All dice are the same in a Yahtzee
-    const int YAHTZEE_INDEX = 12;
     int yahtzee_score = score_yahtzee(dice);
 
     if (yahtzee_score == 50) {
         // Check if the Yahtzee has already been scored
-        if (player_used_categories[YAHTZEE_INDEX] == 1) {  // Yahtzee category already filled
-            if (player_scores[YAHTZEE_INDEX] > 0) {  // Scored a Yahtzee before
+        if (player_used_categories[YAHTZEE] == 1) {  // Yahtzee category already filled
+            if (player_scores[YAHTZEE] > 0) {  // Scored a Yahtzee before
                 printf("Congratulations! You rolled another Yahtzee and earned a joker!\n");
                 // Add 100 bonus points to the Yahtzee category
-                player_scores[YAHTZEE_INDEX] += MULTI_YAHTZEE_BONUS;
+                player_scores[YAHTZEE] += MULTI_YAHTZEE_BONUS;
                 printf("100 bonus points awarded.\n");
             } else {
                 printf("You have already put 0 in the Yahtzee box.\n");
@@ -554,8 +831,8 @@ void player_handle_multiple_yahtzees(int dice[], int player_used_categories[], i
         } else {
             // First Yahtzee scored
             printf("You scored a Yahtzee!\n");
-            player_scores[YAHTZEE_INDEX] = yahtzee_score;  // Set the score for Yahtzee category
-            player_used_categories[YAHTZEE_INDEX] = 1;  // Mark the category as used
+            player_scores[YAHTZEE] = yahtzee_score;  // Set the score for Yahtzee category
+            player_used_categories[YAHTZEE] = 1;  // Mark the category as used
             printf("Scored %d points in the Yahtzee category.\n", yahtzee_score);
         }
     }
@@ -600,8 +877,6 @@ void player_choose_lower_category(int dice[], int player_used_categories[], int 
                     break;
                 case 12: printf("12. Chance\n"); 
                     break;
-                case 13: printf("13. YAHTZEE\n"); 
-                    break;
                 default: 
                     break;
             }
@@ -612,6 +887,7 @@ void player_choose_lower_category(int dice[], int player_used_categories[], int 
     while (!valid_choice) {
         printf("Choice: ");
         scanf("%d", &choice);
+        printf("\n");
 
         // Ensure the choice is in the lower section and hasn't been scored yet
         if (choice >= 7 && choice <= 12 && player_used_categories[choice - 1] == 0) {
@@ -665,20 +941,25 @@ void display_score_table(int player_scores[], int computer_scores[], int game_ov
     printf("-------------------------------------------------------\n");
     printf("| Category         |  Player Score  |  Computer Score |\n");
     printf("-------------------------------------------------------\n");
-    printf("| Ones (1s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[0], player_score_str), convert_score_to_str(computer_scores[0], player_score_str));
-    printf("| Twos (2s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[1], player_score_str), convert_score_to_str(computer_scores[1], player_score_str));
-    printf("| Threes (3s)      | %-14s | %-15s |\n", convert_score_to_str(player_scores[2], player_score_str), convert_score_to_str(computer_scores[2], player_score_str));
-    printf("| Fours (4s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[3], player_score_str), convert_score_to_str(computer_scores[3], player_score_str));
-    printf("| Fives (5s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[4], player_score_str), convert_score_to_str(computer_scores[4], player_score_str));
-    printf("| Sixes (6s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[5], player_score_str), convert_score_to_str(computer_scores[5], player_score_str));
+    printf("| Ones (1s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[0], player_score_str), convert_score_to_str(computer_scores[0], computer_score_str));
+    printf("| Twos (2s)        | %-14s | %-15s |\n", convert_score_to_str(player_scores[1], player_score_str), convert_score_to_str(computer_scores[1], computer_score_str));
+    printf("| Threes (3s)      | %-14s | %-15s |\n", convert_score_to_str(player_scores[2], player_score_str), convert_score_to_str(computer_scores[2], computer_score_str));
+    printf("| Fours (4s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[3], player_score_str), convert_score_to_str(computer_scores[3], computer_score_str));
+    printf("| Fives (5s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[4], player_score_str), convert_score_to_str(computer_scores[4], computer_score_str));
+    printf("| Sixes (6s)       | %-14s | %-15s |\n", convert_score_to_str(player_scores[5], player_score_str), convert_score_to_str(computer_scores[5], computer_score_str));
     printf("-------------------------------------------------------\n");
 
-    // Display singles sum and bonus only if all singles have been scored
-    if (player_singles_scored) {
+    // Only print the "Sum" and "Bonus" when all singles have been scored for the player and computer
+    if (player_singles_scored && computer_singles_scored) {
         printf("| Sum              | %-14s | %-15s |\n", convert_score_to_str(player_singles_sum, player_score_str), convert_score_to_str(computer_singles_sum, computer_score_str));
         printf("| Bonus            | %-14s | %-15s |\n", convert_score_to_str(player_bonus, player_score_str), convert_score_to_str(computer_bonus, computer_score_str));
-    }
-    else {
+    } else if (player_singles_scored) {
+        printf("| Sum              | %-14s | %-15s |\n", convert_score_to_str(player_singles_sum, player_score_str), " "); // Print player sum but leave computer blank
+        printf("| Bonus            | %-14s | %-15s |\n", convert_score_to_str(player_bonus, player_score_str), " "); // Print player bonus but leave computer blank
+    } else if (computer_singles_scored) {
+        printf("| Sum              | %-14s | %-15s |\n", " ", convert_score_to_str(computer_singles_sum, computer_score_str)); // Leave player blank but print computer sum
+        printf("| Bonus            | %-14s | %-15s |\n", " ", convert_score_to_str(computer_bonus, computer_score_str)); // Leave player blank but print computer bonus
+    } else {
         printf("| Sum              | %-14s | %-15s |\n", " ", " "); // Blank if not all singles are scored
         printf("| Bonus            | %-14s | %-15s |\n", " ", " "); // Blank if not all singles are scored
     }
@@ -768,4 +1049,96 @@ int all_singles_scored(int scores[]) {
         } 
     }
     return 1; // Return 1 if all singles are scored
+}
+
+void display_winner(int player_scores[], int computer_scores[]) {
+    // Calculate total scores
+    int player_total_score = calc_total_score(player_scores);
+    int computer_total_score = calc_total_score(computer_scores);
+
+    // Print final scores and determine the winner
+    printf("\n  FINAL SCORES:\n");
+    printf("----------------------\n");
+    printf("Player Total Score: %d\n", player_total_score);
+    printf("Computer Total Score: %d\n", computer_total_score);
+    printf("----------------------\n");
+
+    if (player_total_score > computer_total_score) {
+        printf("Congratulations! You win!\n");
+    } else if (player_total_score < computer_total_score) {
+        printf("Computer wins! Better luck next time!\n");
+    } else {
+        printf("It's a tie! Well played!\n");
+    }
+}
+
+void logo(void) {
+    printf("\n\n");
+    printf("                                                         _______      _______\n");
+    printf("Y     Y   AAAA   H   H  TTTTT  ZZZZZ   EEEEE  EEEEE     |       |    |       |\n");
+    printf(" Y   Y   A    A  H   H    T        Z   E      E         |   o   |    | o   o |\n");
+    printf("  YYY    AAAAAA  HHHHH    T      ZZ    EEEEE  EEEEE     |       |    |       |\n");
+    printf("   Y     A    A  H   H    T     Z      E      E         | o   o |    | o   o |\n");
+    printf("   Y     A    A  H   H    T    ZZZZZ   EEEEE  EEEEE     |       |    |       |\n");
+    printf("                                                        |_______|    |_______|\n");
+    printf("\n                              -- By Shanel Perera --\n");
+}
+
+void main_menu(void) {
+    int choice;
+    
+    printf("### MAIN MENU ###\n");
+    printf("-----------------\n");
+    printf("[1] Start Game\n");
+    printf("[2] Yahtzee Rules\n");
+    printf("[3] Exit\n");
+    printf("-----------------\n");
+
+    printf("Enter your choice: ");
+    scanf("%d", &choice);
+
+    switch (choice) {
+        case 1:
+            game();
+            break;
+        case 2:
+            display_rules();
+
+    }
+}
+
+void display_rules(void) {
+    printf("\n**** YAHTZEE RULES ****\n\n");
+    printf("The objective of YAHTZEE is to get as many points as possible by rolling five dice and getting certain combinations of dice.\n\n");
+    printf("+++ Gameplay +++\n\n");
+    printf("In each turn a player may throw the dice up to three times.A player doesn't have to roll all five dice on the second and third throw of a round,\nhe may put as many dice as he wants to the side and only throw the ones that don't have the numbers he's trying to get.\nFor example, a player throws and gets 1,3,3,4,6. He decides he want to try for the large straight, 1,2,3,4,5.\nSo, he puts 1,3,4 to the side and only throws 3 and 6 again, hoping to get 2 and 5.\n\n");
+    printf("In this game you click on the dice you want to keep. They will be moved down and will not be thrown the next time you press the 'Roll Dice' button.\nIf you decide after the second throw in a turn that you don't want to keep the same dice before the third throw then you can click them again \nand they will move back to the table and be thrown in the third throw.\n\n\n");
+    printf("+++ Upper section combinations +++\n\n");
+    printf("• Ones: Get as many ones as possible.\n• Twos: Get as many twos as possible.\n• Threes: Get as many threes as possible.\n• Fours: Get as many fours as possible.\n• Fives: Get as many fives as possible.\n• Sixes: Get as many sixes as possible.\n\n");
+    printf("For the six combinations above the score for each of them is the sum of dice of the right kind. \nE.g. if you get 1,3,3,3,5 and you choose Threes you will get 3*3 = 9 points. The sum of all the above combinations is calculated and if it is 63 or more, \nthe player will get a bonus of 35 points.On average a player needs three of each to reach 63, but it is not required to get three of each exactly, \nit is perfectly OK to have five sixes, and zero ones for example, as long as the sum is 63 or more the bonus will be awarded.\n\n\n");
+    printf("+++ Lower section combinations +++\n\n");
+    printf("• Three of a kind: Get three dice with the same number. Points are the sum all dice (not just the three of a kind).\n");
+    printf("• Four of a kind: Get four dice with the same number. Points are the sum all dice (not just the four of a kind).\n");
+    printf("• Full house: Get three of a kind and a pair, e.g. 1,1,3,3,3 or 3,3,3,6,6. Scores 25 points.\n");
+    printf("• Small straight: Get four sequential dice, 1,2,3,4 or 2,3,4,5 or 3,4,5,6. Scores 30 points.\n");
+    printf("• Large straight: Get five sequential dice, 1,2,3,4,5 or 2,3,4,5,6. Scores 40 points.\n");
+    printf("• Chance: You can put anything into chance, it's basically like a garbage can when you don't have anything else you can use the dice for. \n          The score is simply the sum of the dice.\n");
+    printf("• YAHTZEE: Five of a kind. Scores 50 points. You can optionally get multiple Yahtzees, see below for details.\n\n\n");
+    printf("+++ Multiple Yahtzees +++\n\n");
+    printf("The rules around multiple Yahtzees are a bit complex. There are a couple of different cases:\n\n");
+    printf("1. You already have a Yahtzee: You get a 100 bonus points in the Yahtzee box, but you also have a joker, which means that you can choose \n                               another move for the Yahtzee you just got. If the number you got yahtzees with has not been filled out in the upper section, \n                               then you must choose that. E.g. if you get an additional Yahtzee with 2's, and you haven't filled out the 2's in the upper section then \n                               you must choose that, and get 10 points for it. If the upper section box is already filled then you can choose any of the lower region boxes, \n                               and they will be scored as normal. Yahtzee is a superset of 3 of a kind, 4 of a kind, full house and chance, but you can also choose \n                               small or large straight and will get the normal 30 and 40 points for those.\n\n");
+    printf("2. You've already put 0 in the Yahtzee box: In this case you get no 100 point bonus, but you do get a joker, and can choose your move following the rules \n                                            described above for jokers.\n\n\n");
+    
+    char choice;
+    printf("[B] Back to Main Menu\n");
+    printf("[E] Exit\n");
+
+    printf("Choose an option: ");
+    scanf(" %c", &choice);
+    printf(" ");
+
+    switch (choice) {
+        
+    }
+
 }
