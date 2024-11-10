@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+#include <ctype.h>
 
 // Defining constants
 #define NUM_OF_DICE 5
 #define NUM_OF_SCORING_CATEGORIES 13
+#define ROLL_LIMIT 3
 #define FULL_HOUSE_POINTS 25
 #define SMALL_STRAIGHT_POINTS 30
 #define LARGE_STRAIGHT_POINTS 40
@@ -22,8 +25,6 @@
 #define LARGE_STRAIGHT 10
 #define CHANCE 11
 #define YAHTZEE 12
-
-#define ROLL_LIMIT 3
 
 /* Function declarations */
 void game();
@@ -45,7 +46,7 @@ int all_singles_scored(int scores[]);
 void display_winner(int player_scores[], int computer_scores[]);
 void logo(void);
 void game(void);
-void main_menu(void);
+int main_menu(void);
 void display_rules(void);
 // Scoring functions
 int score_single_numbers (int dice[], int number);
@@ -78,7 +79,8 @@ void game(void) {
     int player_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
     int computer_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
     int computer_scores[NUM_OF_SCORING_CATEGORIES] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // Array to store computer AI scores for each category
-
+    // Initialize scores to -1 to hide categories until a score is recorded; 0 will display only once 0 is stored.
+    
     srand(time(NULL)); // Seed the random number generator using current time
 
     int game_over = 0; // Flag to check if the game has ended (Initializing game_over to false)
@@ -135,11 +137,11 @@ void player_turn(int dice[], int player_used_categories[], int player_scores[]) 
         // Prompt the user to choose to re-roll or choose a scoring category
             char choice;
             printf("Choose an option >>> \n");
-            printf("[r] Re-roll\n");
-            printf("[c] Choose scoring category\n");
+            printf("[R] Re-roll\n");
+            printf("[C] Choose scoring category\n");
             printf("\n");
-            printf("Enter your choice [r] or [c]: ");
-            scanf("%c", &choice);
+            printf("Enter your choice [R] or [C]: ");
+            scanf(" %c", &choice);
             printf("\n");
 
             if (choice == 'r' || choice == 'R') {
@@ -171,7 +173,7 @@ void player_turn(int dice[], int player_used_categories[], int player_scores[]) 
                 break; // Exit the loop after scoring
             }
             else {
-                printf("Invalid choice! Please enter 1 or 2.\n");
+                printf("Invalid choice! Please enter 'R' or 'C'.\n");
                 continue; // Continue loop until a valid input has entered
             }
         }
@@ -1073,21 +1075,19 @@ void display_winner(int player_scores[], int computer_scores[]) {
 }
 
 void logo(void) {
-    printf("\n\n");
-    printf("                                                         _______      _______\n");
-    printf("Y     Y   AAAA   H   H  TTTTT  ZZZZZ   EEEEE  EEEEE     |       |    |       |\n");
-    printf(" Y   Y   A    A  H   H    T        Z   E      E         |   o   |    | o   o |\n");
-    printf("  YYY    AAAAAA  HHHHH    T      ZZ    EEEEE  EEEEE     |       |    |       |\n");
-    printf("   Y     A    A  H   H    T     Z      E      E         | o   o |    | o   o |\n");
-    printf("   Y     A    A  H   H    T    ZZZZZ   EEEEE  EEEEE     |       |    |       |\n");
-    printf("                                                        |_______|    |_______|\n");
-    printf("\n                              -- By Shanel Perera --\n");
+    printf("__     __        _    _  _______  ______ ______  ______      ._______.    ______\n");
+    printf("\\ \\   / / /\\    | |  | ||__   __||___  /|  ____||  ____|    /   o   /|   /\\     \\\n");
+    printf(" \\ \\_/ / /  \\   | |__| |   | |      / / | |__   | |__      /_______/o|  /o \\  o  \\\n");
+    printf("  \\   / / /\\ \\  |  __  |   | |     / /  |  __|  |  __|     | o     | | /   o\\_____\\\n");
+    printf("   | | / ____ \\ | |  | |   | |    / /__ | |____ | |____    |   o   |o/ \\o   /o    /\n");
+    printf("   |_|/_/    \\_\\|_|  |_|   |_|   /_____||______||______|   |     o |/   \\ o/  o  /\n");
+    printf("                                                           '-------'     \\/____o/\n");
 }
 
-void main_menu(void) {
+int main_menu(void) {
     int choice;
     
-    printf("### MAIN MENU ###\n");
+    printf("*** MAIN MENU ***\n");
     printf("-----------------\n");
     printf("[1] Start Game\n");
     printf("[2] Yahtzee Rules\n");
@@ -1103,8 +1103,13 @@ void main_menu(void) {
             break;
         case 2:
             display_rules();
-
+            break;
+        case 3:
+            exit(0);
+            break;
     }
+
+    return choice;
 }
 
 void display_rules(void) {
@@ -1129,16 +1134,24 @@ void display_rules(void) {
     printf("1. You already have a Yahtzee: You get a 100 bonus points in the Yahtzee box, but you also have a joker, which means that you can choose \n                               another move for the Yahtzee you just got. If the number you got yahtzees with has not been filled out in the upper section, \n                               then you must choose that. E.g. if you get an additional Yahtzee with 2's, and you haven't filled out the 2's in the upper section then \n                               you must choose that, and get 10 points for it. If the upper section box is already filled then you can choose any of the lower region boxes, \n                               and they will be scored as normal. Yahtzee is a superset of 3 of a kind, 4 of a kind, full house and chance, but you can also choose \n                               small or large straight and will get the normal 30 and 40 points for those.\n\n");
     printf("2. You've already put 0 in the Yahtzee box: In this case you get no 100 point bonus, but you do get a joker, and can choose your move following the rules \n                                            described above for jokers.\n\n\n");
     
-    char choice;
-    printf("[B] Back to Main Menu\n");
-    printf("[E] Exit\n");
+    while (1) {
+        char choice;
+        printf("[B] Back to Main Menu\n");
+        printf("[E] Exit\n");
 
-    printf("Choose an option: ");
-    scanf(" %c", &choice);
-    printf(" ");
+        printf("\nChoose an option: ");
+        scanf(" %c", &choice);
+        printf("\n");
 
-    switch (choice) {
-        
+        if (choice == 'B' || choice == 'b') {
+            main_menu();
+        }
+        else if (choice == 'E' || choice == 'e') {
+            exit(0);
+        }
+        else {
+            printf("Invalid Input.\n\n");
+            continue;
+        }   
     }
-
 }

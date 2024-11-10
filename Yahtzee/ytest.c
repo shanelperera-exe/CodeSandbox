@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+#include <ctype.h>
 
 // Defining constants
 #define NUM_OF_DICE 5
 #define NUM_OF_SCORING_CATEGORIES 13
+#define ROLL_LIMIT 3
 #define FULL_HOUSE_POINTS 25
 #define SMALL_STRAIGHT_POINTS 30
 #define LARGE_STRAIGHT_POINTS 40
@@ -22,8 +25,6 @@
 #define LARGE_STRAIGHT 10
 #define CHANCE 11
 #define YAHTZEE 12
-
-#define ROLL_LIMIT 3
 
 /* Function declarations */
 void game();
@@ -66,19 +67,7 @@ void joker(int dice[], int used_categories[], int scores[], int yahtzee_value);
 int main(void) {
     logo();
     printf("\n***** Welcome to Yahtzee! *****\n\n");
-    int choice = main_menu();
-
-    switch (choice) {
-        case 1:
-            game();
-            break;
-        case 2:
-            display_rules();
-            break;
-        case 3:
-            exit(0);
-            break;
-    }
+    main_menu();
 
     return 0;
 }
@@ -90,7 +79,8 @@ void game(void) {
     int player_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
     int computer_used_categories[NUM_OF_SCORING_CATEGORIES] = {0}; // Array to track used categories by the player
     int computer_scores[NUM_OF_SCORING_CATEGORIES] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // Array to store computer AI scores for each category
-
+    // Initialize scores to -1 to hide categories until a score is recorded; 0 will display only once 0 is stored.
+    
     srand(time(NULL)); // Seed the random number generator using current time
 
     int game_over = 0; // Flag to check if the game has ended (Initializing game_over to false)
@@ -147,11 +137,11 @@ void player_turn(int dice[], int player_used_categories[], int player_scores[]) 
         // Prompt the user to choose to re-roll or choose a scoring category
             char choice;
             printf("Choose an option >>> \n");
-            printf("[r] Re-roll\n");
-            printf("[c] Choose scoring category\n");
+            printf("[R] Re-roll\n");
+            printf("[C] Choose scoring category\n");
             printf("\n");
-            printf("Enter your choice [r] or [c]: ");
-            scanf("%c", &choice);
+            printf("Enter your choice [R] or [C]: ");
+            scanf(" %c", &choice);
             printf("\n");
 
             if (choice == 'r' || choice == 'R') {
@@ -183,7 +173,7 @@ void player_turn(int dice[], int player_used_categories[], int player_scores[]) 
                 break; // Exit the loop after scoring
             }
             else {
-                printf("Invalid choice! Please enter 1 or 2.\n");
+                printf("Invalid choice! Please enter 'R' or 'C'.\n");
                 continue; // Continue loop until a valid input has entered
             }
         }
@@ -1093,13 +1083,12 @@ void logo(void) {
     printf("   Y     A    A  H   H    T     Z      E      E         | o   o |    | o   o |\n");
     printf("   Y     A    A  H   H    T    ZZZZZ   EEEEE  EEEEE     |       |    |       |\n");
     printf("                                                        |_______|    |_______|\n");
-    printf("\n                              -- By Shanel Perera --\n");
 }
 
 int main_menu(void) {
     int choice;
     
-    printf("### MAIN MENU ###\n");
+    printf("*** MAIN MENU ***\n");
     printf("-----------------\n");
     printf("[1] Start Game\n");
     printf("[2] Yahtzee Rules\n");
@@ -1108,6 +1097,18 @@ int main_menu(void) {
 
     printf("Enter your choice: ");
     scanf("%d", &choice);
+
+    switch (choice) {
+        case 1:
+            game();
+            break;
+        case 2:
+            display_rules();
+            break;
+        case 3:
+            exit(0);
+            break;
+    }
 
     return choice;
 }
