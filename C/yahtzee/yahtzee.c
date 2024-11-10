@@ -74,8 +74,10 @@ int main(void) {
             break;
         case 2:
             display_rules();
+            break;
         case 3:
             exit(0);
+            break;
     }
 
     return 0;
