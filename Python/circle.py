@@ -10,8 +10,8 @@ def main():
 
 
 def get_radius():
-        r = float(input("Enter the radius of the circle (cm): "))
-        return r
+     r = float(input("Enter the radius of the circle (cm): "))
+     return r
 
 def calc_circumference(r):
      c = 2 * math.pi * r

@@ -10,26 +10,5 @@ for _ in range(15):
     tim.forward(10)
     tim.pendown()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 screen = Screen()
 screen.exitonclick()
