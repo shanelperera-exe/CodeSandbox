@@ -1,0 +1,11 @@
+Test emails:
+gtest4py@gmail.com
+ytest4py@outlook.com
+
+login password = test@____
+
+EmailSender app password = wwhq svkw vjac qpgq
+
+Automate using the cloud:
+https://www.pythonanywhere.com/user/shanelperera/files/home/shanelperera/BirthdayWisher
+
