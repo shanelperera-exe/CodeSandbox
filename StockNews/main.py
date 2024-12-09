@@ -1,17 +1,18 @@
 import requests
 import datetime as dt
 from twilio.rest import Client
+import os
 
 STOCK_NAME = "TSLA"
 COMPANY_NAME = "Tesla Inc"
 
 STOCK_ENDPOINT = "http://api.marketstack.com/v1/eod"
 NEWS_ENDPOINT = "https://newsapi.org/v2/everything"
-STOCK_API_KEY = "963bf20d1776e88e0f3d417ef15c8c1e"
-NEWS_API_KEY = "32f9de607d284e50a7f80736894388f3"
+STOCK_API_KEY = os.environ["MARKETSTOCK_API_KEY"]
+NEWS_API_KEY = os.environ["NEWS_API_KEY"]
 
-ACCOUNT_SID = "ACbbef7f076edb70b892fe25e14ee4ec6a"
-AUTH_TOKEN = "66ee41c587467a74c42e957f539b2cd7"
+ACCOUNT_SID = os.environ["TWILIO_ACCOUNT_SID"]
+AUTH_TOKEN = os.environ["TWILIO_AUTH_TOKEN"]
 
 def main():
     yesterday, seven_days_ago = get_dates()

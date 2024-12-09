@@ -3,7 +3,7 @@ import os
 from twilio.rest import Client
 
 API_KEY = os.environ["OWM_API_KEY"]
-ACCOUNT_SID = "ACbbef7f076edb70b892fe25e14ee4ec6a"
+ACCOUNT_SID = os.environ["TWILIO_ACCOUNT_SID"]
 AUTH_TOKEN = os.environ["TWILIO_AUTH_TOKEN"]
 
 MY_LAT = 9.6615   # 7.082857
